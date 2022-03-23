@@ -1,4 +1,4 @@
-# image-based-indoor-localization
+# Image Based Indoor Localization
 
 
 
