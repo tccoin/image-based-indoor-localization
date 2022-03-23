@@ -17,5 +17,6 @@ week 7: Apr 4-Apr 10
 
 ## Documents
 - [Fusing Convolutional Neural Network and Geometric Constraint for Image-based Indoor Localization](https://arxiv.org/abs/2201.01408)
-- [7 Scenes Dataset](https://drive.google.com/drive/folders/1mJY05WGmHIqwPiGcS76ZCr86qE3KJLHJ?usp=sharing)
+- [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/)
+- [7 Scenes Dataset Sequence File](https://drive.google.com/drive/folders/1mJY05WGmHIqwPiGcS76ZCr86qE3KJLHJ?usp=sharing)
 - [Slides introducing the method](https://docs.google.com/presentation/d/1TcP9ghPcuDF08yf6W7LYyVBT8AwY06my/edit?usp=sharing&ouid=113322968888661125678&rtpof=true&sd=true)
