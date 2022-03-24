@@ -17,7 +17,16 @@
         ```
     1. Run `python scripts/split_dataset.py`
     1. Run `python scripts/generate_tf_records.py`
-
+1. Train the model
+    1. Install tensorflow-gpu, opencv and related libraries.
+    1. Create folders for storing results:
+        ```
+        ├─model
+        │  └─chess
+        │      ├─training_data_info
+        │      └─weights
+        ```
+    1. Run `python src/siamese_zone/run_siamese.py`. See all available arguments by running `python src/siamese_zone/run_siamese.py -h`.
 ## Project Info
 week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
 1. Run original codes and improve README for reference code

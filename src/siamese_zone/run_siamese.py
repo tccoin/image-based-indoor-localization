@@ -759,7 +759,7 @@ if __name__ == '__main__':
 
     # Flags needed for Training or retraining
     parser.add_argument('--retrain', default=False, help='if retraining from a check point', action='store')
-    parser.add_argument('--train', default=False, help='train normal to estimate 7 paramters', action='store')
+    parser.add_argument('--train', default=True, help='train normal to estimate 7 paramters', action='store')
     parser.add_argument('--sample_train', default=False, help='only use to check the data flow and tensor graph', action='store')
     parser.add_argument('--train_2d', default=False, help='make the pose problem a 2d problem, so only train on x,y, yaw', action='store')
 
