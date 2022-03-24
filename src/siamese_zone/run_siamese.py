@@ -297,8 +297,8 @@ class Train():
             dataset_val = tf.data.TFRecordDataset(self.input_validation_tfrecord,compression_type='GZIP')
                 
             
-            if self.retrain:  ### only works for 3D can be made to work for 2D but needs refactoring the code
-                
+            if self.retrain:
+                # only works for 3D can be made to work for 2D but needs refactoring the code
                 # Get data from the previous training run
 # 				data_dict = readDataFromFile(self.output_data_dir \
 # 											 + 'training_data_info/{}_posenet_data.h5py'.format(previous_training_name))
@@ -474,11 +474,6 @@ class Test():
         self.input_train_tfrecord = []
         for file_name in self.training_data:
             self.input_train_tfrecord.append(self.input_data_dir + str(file_name) + '.tfrecords')
-# 		self.input_validation_tfrecord = self.input_data_dir + self.validation_data
-# 		testing_data = []
-# 		for file_name in self.testing_data:
-# 			testing_data.append(self.input_data_dir + str(file_name) + '.tfrecords')
-# 		self.testing_data = testing_data
         self.testing_data = [self.input_data_dir + str(file_name) + '.tfrecords' for file_name in self.testing_data]
         print('testing data: {}'.format(self.testing_data))
         self.testing_name = args.testing_name_suffix
@@ -638,11 +633,6 @@ class Test():
         #         descriptor_tmp += [descriptor]
         #     zone_dict += [descriptor_tmp]
 
-
-
-
-        # interate over each sequence Modified by Jingwei 3 Aug
-        number_of_sequence = 2
         aggregated_results = []
         batch_size=data_dict['posenet_batch_size']
 
@@ -650,38 +640,18 @@ class Test():
         dataset_train = dataset_train.batch(batch_size)
         dataset_train = dataset_train.prefetch(5)
         train_results = based_model.predict(dataset_train)
-        for idx in range(number_of_sequence):
+        for dataset_name in ['test', 'train']:
             temp = []
-            input_data_file = self.input_data_dir  + str(idx) + '.tfrecords'
-            print('##########testing file########### : {}'.format(input_data_file))
+            input_data_file = self.input_data_dir  + dataset_name + '.tfrecords'
+            print('########## testing file ########### : {}'.format(input_data_file))
             dataset = tf.data.TFRecordDataset(input_data_file,compression_type='GZIP')
 
             pose_test = []
             dataset_test = dataset.map(parse_function)
             for features in dataset_test:
                 pose_test += [features[1].numpy()]
-            
-            
-            # break sequence for plotting
-            temp = self.save_cdf_position_file.split('.')
-            save_cdf_position_file = temp[0] + '_' + str(idx) + '.png'
-            temp = self.save_cdf_orientation_file.split('.')
-            save_cdf_orientation_file = temp[0] + '_' + str(idx) + '.png'
-            temp = self.save_trajectory_file.split('.')
-            save_trajectory_file = temp[0] + '_' + str(idx) + '.png'
-            # Modified by jingwei 32 July 2019
-            temp = self.save_output_data_file.split('.')
-            save_output_data_file = temp[0] + '_' + str(idx) + '.h5py'
 
-            # Training
-            version = tf.__version__
-            print('version: {} and type: {}: {}'.format(version, type(version), int(version.split('.')[0])))
-            if (int(version.split('.')[0]) == 1):
-                print('TENSORFLOW 1.0.0 SELECTED')
-            else:
-                print('TENSORFLOW 2.0.0 SELECTED')
-
-            #  #   Generate result
+            # Generate result
             # zone_groudtrtruth = []
             # for features in dataset_test:
             #     zone_groudtrtruth   += [int(features[1].numpy()[0])] 
@@ -691,7 +661,7 @@ class Test():
             # dataset_test = dataset_test.batch(batch_size)
             # dataset_test = dataset_test.prefetch(5)
             # test_results = based_model.predict(dataset_test)
-            # prediction = []  
+            # prediction = []
 
             # p = progressbar.ProgressBar()
             # error = 0
@@ -717,23 +687,9 @@ class Test():
                                                           self.threshold_angle,
                                                           self.threshold_dist,
                                                           self.num_candidate,
-                                                          save_output_data_file=save_output_data_file
+                                                          save_output_data_file=self.save_output_data_file
                                                         )
 
-            
-
-            # median_result = helper.customPredictGenerator_tf2(model, dataset_test,
-            #                                               batch_size,
-            #                                               training_name=self.testing_name,
-            #                                               should_plot=self.should_plot,
-            #                                               should_plot_cdf=self.should_plot_cdf,
-            #                                               should_save_output_data=self.should_save_output_data,
-            #                                               save_cdf_position_file=save_cdf_position_file,
-            #                                               save_cdf_orientation_file=save_cdf_orientation_file,
-            #                                               save_trajectory_file=save_trajectory_file,
-            #                                               save_output_data_file=save_output_data_file,
-            #                                               flag2D = self.testing_2d_flag
-            #                                             )
             temp.append(input_data_file)
             temp.append(median_result)
             aggregated_results.append(temp)
@@ -803,7 +759,7 @@ if __name__ == '__main__':
 
     # Flags needed for Training or retraining
     parser.add_argument('--retrain', default=False, help='if retraining from a check point', action='store')
-    parser.add_argument('--train', default=True, help='train normal to estimate 7 paramters', action='store')
+    parser.add_argument('--train', default=False, help='train normal to estimate 7 paramters', action='store')
     parser.add_argument('--sample_train', default=False, help='only use to check the data flow and tensor graph', action='store')
     parser.add_argument('--train_2d', default=False, help='make the pose problem a 2d problem, so only train on x,y, yaw', action='store')
 
@@ -875,14 +831,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_all', default=False, help='test all models listed in the CSV file', action='store')
     parser.add_argument('--test_all_sequence', default=True, help='test over all sequences on the database', action='store')
 #2D model
-# 	parser.add_argument('--testing_name_suffix', default='2018_11_09_23_58_train_train_data_training_largedataset_w_halloweendecor_rotated_2d_BN_more_oct2018', help='name of model to be tested', action='store')
-#3D model
-
-    if(parser.get_default('train')  and parser.get_default('test_all_sequence')):
-        parser.add_argument('--testing_name_suffix', default='{}_train_{}'.format(parser.get_default('training_name'),parser.get_default('training_name_suffix')), action='store')
-    else:
-        #   Modified by Jingwei 14 March Jingwei  Modify here dataset_name
-        parser.add_argument('--testing_name_suffix', default='chess_siamese_FXPAL', help='name of model to be tested', action='store')
+    parser.add_argument('--testing_name_suffix', default='{}_train_{}'.format(parser.get_default('training_name'),parser.get_default('training_name_suffix')), action='store')
     args = parser.parse_args()
     
     main_routine(args)
