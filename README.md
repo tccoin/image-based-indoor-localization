@@ -2,6 +2,12 @@
 
 ## Installation
 
+1. Install libraries:
+    ```
+    conda create -n tf -c anaconda -c conda-forge tensorflow-gpu tqdm h5py keras scipy opencv matplotlib
+    conda activate tf
+    pip install progressbar nearpy
+    ```
 1. Data processing
     1. Download [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/) and extract to `data` folder. Here we will use `chess` scene as example.
     1. Make sure you have following folder structure:
@@ -15,6 +21,7 @@
         │  │  ├─seq-05
         │  │  ├─seq-06
         ```
+    1. Run `mkdir -p model/chess/weights/ model/chess/training_data_info model/chess/cdf`
     1. Run `python scripts/split_dataset.py`
     1. Run `python scripts/generate_tf_records.py`
 1. Train the model
@@ -26,7 +33,7 @@
         │      ├─training_data_info
         │      └─weights
         ```
-    1. Run `python src/siamese_zone/run_siamese.py`. See all available arguments by running `python src/siamese_zone/run_siamese.py -h`.
+    1. Run `python src/siamese_zone/run_siamese.py --train True`. See all available arguments by running `python src/siamese_zone/run_siamese.py -h`.
 ## Project Info
 week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
 1. Run original codes and improve README for reference code
