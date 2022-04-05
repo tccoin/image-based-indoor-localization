@@ -12,6 +12,7 @@
 extern "C" {
 __declspec(dllexport) void init_data(const double* data, size_t size);
 __declspec(dllexport) int find_nearest(const double* input);
+__declspec(dllexport) void cleanup();
 };
 
 #endif //SEARCH_SEARCH_H

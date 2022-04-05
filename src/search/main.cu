@@ -15,13 +15,12 @@ int main() {
 
     init_data(data.data(), data.size());
 
-    auto total = std::chrono::high_resolution_clock::duration(0);
-
     {
         std::vector<double> input(128, 100.5);
         std::cout << "Nearest: " << find_nearest(input.data()) << '\n';
     }
 
+    auto total = std::chrono::high_resolution_clock::duration(0);
 
     for (int i = 0; i < 100; ++i) {
         std::vector<double> input(128, i);
@@ -34,6 +33,8 @@ int main() {
     }
 
     std::cout << "Time for 100 searches: " << std::chrono::duration_cast<std::chrono::milliseconds>(total).count();
+
+    cleanup();
 
     return 0;
 }
