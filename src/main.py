@@ -1,15 +1,14 @@
-import os.path
 import argparse
+import os
 import tensorflow as tf
 from siamese_network import posenet
-from ba.visual_isam2 import VisualISAM2
 from siamese_network.helper import readDataFromFile, parse_function
-import gtsam
-from gtsam.symbol_shorthand import L, X
+from ba.visual_isam2 import VisualISAM2
+from search import search
 
-class ImageBasedLocalization():
+
+class ImageBasedLocalization:
     def __init__(self, args):
-
         # set attr
         self.model_info_path = 'model/{}/training_data_info/{}_posenet_data.h5py'.format(
             args.model_name,
@@ -28,7 +27,7 @@ class ImageBasedLocalization():
 
     def load_model(self):
         data_dict = readDataFromFile(self.model_info_path)
-        model =  posenet.create_siamese_keras()
+        model = posenet.create_siamese_keras()
         model.load_weights(data_dict['posenet_weight_file'])
         batch_size = data_dict['posenet_batch_size']
         return model, batch_size
@@ -51,6 +50,8 @@ class ImageBasedLocalization():
         dataset = dataset.prefetch(5)
         self.map_descriptors = self.model.predict(dataset)
         self.map_poses = poses
+        # upload map to GPU for fast search
+        search.init_data(self.map_descriptors)
         # todo: save map
 
     def load_map(self, map_path):
@@ -58,8 +59,7 @@ class ImageBasedLocalization():
 
     def search_image(self, dataset):
         image_descriptor = self.model.predict(dataset)[0]
-        # todo: search in self.map_descriptors, return map_frame_id
-        pass
+        return search.find_nearest(image_descriptor)
 
     def get_neighbors(self, i, k):
         # todo: return knn for i-th map frame, includeing poses, features
@@ -84,15 +84,16 @@ class ImageBasedLocalization():
             trajectory.append(current_pose)
         return trajectory
 
+
 def add_argument(parser):
     parser.add_argument('--model_name',
-        default='chess',
-        help='model name',
-        action='store'
-    )
+                        default='chess',
+                        help='model name',
+                        action='store'
+                        )
+
 
 if __name__ == '__main__':
-
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     parser = argparse.ArgumentParser()
     add_argument(parser)
@@ -101,4 +102,3 @@ if __name__ == '__main__':
 
     ibl = ImageBasedLocalization(args)
     ibl.search_image()
-    

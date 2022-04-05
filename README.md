@@ -8,9 +8,10 @@
     conda activate tf
     pip install progressbar nearpy
     ```
-1. Data processing
-    1. Download [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/) and extract to `data` folder. Here we will use `chess` scene as example.
-    1. Make sure you have following folder structure:
+2. Data processing
+    1. Download [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/) and
+       extract to `data` folder. Here we will use `chess` scene as example.
+    2. Make sure you have following folder structure:
         ```
         ├─data
         │  ├─chess
@@ -21,10 +22,15 @@
         │  │  ├─seq-05
         │  │  ├─seq-06
         ```
-    1. Run `mkdir -p model/chess/weights/ model/chess/training_data_info model/chess/cdf`
-    1. Run `python scripts/split_dataset.py`
-    1. Run `python scripts/generate_tf_records.py`
-1. Train the model
+    3. Run `mkdir -p model/chess/weights/ model/chess/training_data_info model/chess/cdf`
+    4. Run `python scripts/split_dataset.py`
+    5. Run `python scripts/generate_tf_records.py`
+3. Compile fast searching module
+    1. Go to `cd src/search`
+    2. Run `mkdir cmake-build-release`
+    3. Run `cmake -DCMAKE_BUILD_TYPE=Release ..`
+    4. Run `make -j8`
+4. Train the model
     1. Install tensorflow-gpu, opencv and related libraries.
     1. Create folders for storing results:
         ```
@@ -33,10 +39,15 @@
         │      ├─training_data_info
         │      └─weights
         ```
-    1. Run `python src/siamese_network/train.py`. See all available arguments by running `python src/siamese_network/train.py -h`.
-    1. Run `python src/siamese_network/test.py`. See all available arguments by running `python src/siamese_network/test.py -h`.
+    1. Run `python src/siamese_network/train.py`. See all available arguments by
+       running `python src/siamese_network/train.py -h`.
+    1. Run `python src/siamese_network/test.py`. See all available arguments by
+       running `python src/siamese_network/test.py -h`.
+
 ## Project Info
+
 week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
+
 1. Run original codes and improve README for reference code
 1. Read the dataset into Python
 1. Work on improvements
@@ -47,6 +58,7 @@ week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
 1. write report and slides
 
 ## Documents
+
 - [Fusing Convolutional Neural Network and Geometric Constraint for Image-based Indoor Localization](https://arxiv.org/abs/2201.01408)
 - [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/)
 - [Slides introducing the method](https://docs.google.com/presentation/d/1TcP9ghPcuDF08yf6W7LYyVBT8AwY06my/edit?usp=sharing&ouid=113322968888661125678&rtpof=true&sd=true)
