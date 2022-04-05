@@ -495,21 +495,19 @@ def getImageSimilarity(pose1, pose2, threshold_anlge, threshold_dist):
         return True, distDif, angleDif
     else:
         return False, distDif, angleDif
-def customPredictSiamese_tf2(based_model,
-                             dataset_test,
-                             train_results, #   Imgae descriptors for training images
-                             batch_size,
-                             pose_train,
-                             pose_test,
-                             threshold_anlge,
-                             threshold_dist,
-                             num_candidate,
-                               save_output_data_file=None):
-    #   Generate result
-    # zone_groudtrtruth = []
-    # for features in dataset_test:
-    #     zone_groudtrtruth   += [int(features[1].numpy()[0]) + 1]
 
+def customPredictSiamese_tf2(
+    based_model,
+    dataset_test,
+    train_results,
+    batch_size,
+    pose_train,
+    pose_test,
+    threshold_anlge,
+    threshold_dist,
+    num_candidate,
+    save_output_data_file=None
+):
 
     #   Modified by Jingwei: Predict
     dataset_test = dataset_test.batch(batch_size)
@@ -532,90 +530,21 @@ def customPredictSiamese_tf2(based_model,
     for index in range(train_results.shape[0]):
         engine.store_vector(train_results[index,:],index)
 
-
     scores = np.zeros(len(train_results), dtype=float)
-    for i in p(range(len(test_results))):   #   For every image
-        # #   Lookup the dictionary
-        # #   Find the top 'num_candidate' scores in zone
-        # #   1. Initialize the candidate
-        # score = np.linalg.norm(test_results[i] - zone_dict[0][0]) * np.ones((num_candidate,1),float)
-        # for k in range(1,num_img_siamese):
-        #     tmp = np.linalg.norm(test_results[i] - zone_dict[0][k])
-        #     # for m in range(1, num_candidate):
-        #     #     if (tmp < score[m]):
-        #     #         score[m] = tmp
-        #     #         break
-        #     if (tmp < score[0]):
-        #         score[0] = tmp
-        # score[:] = score[0]
-
-        # # ind_zone = np.ones((num_candidate,1),dtype=int)
-        # scores = np.zeros(len(zone_dict), dtype=float)
-        # for j in range(0,len(zone_dict)):
-        #     temp = np.linalg.norm(test_results[i] - zone_dict[j][0])
-        #     for k in range(1, num_img_siamese):
-        #         tmp = np.linalg.norm(test_results[i] - zone_dict[j][k])
-        #         if (tmp < temp):
-        #             temp = tmp
-        #     scores[j] = temp
-            # # temp = np.linalg.norm(test_results[i] - zone_dict[j])
-            # for m in range(0,num_candidate):
-            #     if(temp < score[m]):
-            #         ind_zone[m] = j+1
-            #         score[m] = temp
-            #         break
-        # #   Version I: Search the optimal by brutal force
+    for i in p(range(len(test_results))):
+        # Search the optimal by brutal force
         for k in range(len(train_results)):
             scores[k] = np.linalg.norm(test_results[i] - train_results[k])
-        ind_image = np.argsort(scores) + 1
-        #   Select top num_candidate images:
-        #   Add ind_image[0] as the candidate image
-        candidate = [ind_image[0]]
-
-        #   Version II: Approximate hash searching.
-        #N = engine.neighbours(test_results[i] )
-        #candidate = [N[0][1]]
-        #num_candidate = 1
-
-
-        #   Select ind_image[k] as cadndiate. Make sure it is not close to other candaite images
-        if num_candidate > 1:
-            for k in range(1,len(train_results)):
-                ind = k
-                flag_add = True
-                for q in range(len(candidate)):
-                    [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[ind_image[k]-1], pose_train[candidate[q]-1], 2*threshold_anlge,
-                                                      4*threshold_dist)
-                    if bool_similar==True:
-                        flag_add = False
-                        break
-                if flag_add == True:
-                    candidate += [ind_image[k]]
-                if len(candidate)==num_candidate:
-                    break
-            while(len(candidate) < num_candidate):
-                candidate += [-1]
-            prediction += [candidate]
-            time.sleep(0.01)
-            error = 1
-        else:
-            prediction += [candidate]
-        #   Compare with the ground truth
-        for m in range(num_candidate):
-            [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[candidate[m]-1], pose_test[i], 2*threshold_anlge, 4*threshold_dist)
-            if m == 0:
-                results_dist[i]  = distDif
-                results_angle[i] = angleDif
-                error = 0
-            if bool_similar==True:
-                error = 0
-                results_dist[i] = distDif
-                results_angle[i] = angleDif
-        # error_x = np.linalg.norm(ind_image[0] - zone_groudtrtruth[i])
-        results[i] = error
-    median_result = np.mean(results, axis=0)  
-
-
+        max_score_id = np.argmax(scores)
+        candidate = [max_score_id]
+        prediction += [candidate]
+        bool_similar, distDif, angleDif = getImageSimilarity(
+            pose_train[candidate[0]-1],
+            pose_test[i],
+            2*threshold_anlge,
+            4*threshold_dist
+        )
+        results[i] = 0
     median_result = np.mean(results, axis=0)
     median_result_str = '(Median error: {} zones)'.format(median_result)
     print(median_result_str)
@@ -627,23 +556,24 @@ def customPredictSiamese_tf2(based_model,
     print(median_result_str)
 
 
-    #   Calculate groundtruth (Not unique!!)
-    groundtruth = []
-    for i in range(len(pose_test)):
-        bool_find = False
-        for k in range(len(pose_train)):
-            [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[k], pose_test[i], threshold_anlge,
-                                              threshold_dist)
-            if bool_similar == True:
-                groundtruth += [k]
-                bool_find = True
-                break
-        if bool_find == False:
-            groundtruth += [-1]
+    # Calculate groundtruth
+    # groundtruth = []
+    # for i in range(len(pose_test)):
+    #     bool_find = False
+    #     for k in range(len(pose_train)):
+    #         [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[k], pose_test[i], threshold_anlge,
+    #                                           threshold_dist)
+    #         if bool_similar == True:
+    #             groundtruth += [k]
+    #             bool_find = True
+    #             break
+    #     if bool_find == False:
+    #         groundtruth += [-1]
 
-    save_siamese_data(prediction, groundtruth, save_output_data_file)
+    # save_siamese_data(prediction, groundtruth, save_output_data_file)
 
     return median_result
+
 def customPredictGenerator_tf2(model, data, batch_size, training_name,
                                should_plot=False, should_plot_cdf=False, should_save_output_data=True,
                                save_cdf_position_file=None,
@@ -656,10 +586,8 @@ def customPredictGenerator_tf2(model, data, batch_size, training_name,
         number_of_samples = idx
         if idx == 0:
             xyz_label = np.array(data_val[1])
-        # 	# wpqr_label = np.array(data_val[1][1])
         else:
             xyz_label = np.concatenate((xyz_label, np.array(data_val[1])), axis=0)
-    # 	# wpqr_label = np.concatenate( (wpqr_label, np.array(data_val[1][1])), axis=0)
 
     xyz_prediction = model.predict(data, verbose=1)
 
@@ -688,7 +616,6 @@ def customPredictGenerator_tf2(model, data, batch_size, training_name,
     median_result = np.median(results, axis=0)
     median_result_str = '(Median error: {} zones)'.format(median_result)
     median_result_return = '{}'.format(median_result)
-    print(median_result_str)
 
     if flag2D:
         x_predicted = xyz_prediction[:, 0]

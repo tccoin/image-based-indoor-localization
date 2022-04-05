@@ -33,7 +33,8 @@
         │      ├─training_data_info
         │      └─weights
         ```
-    1. Run `python src/siamese_zone/run_siamese.py --train True`. See all available arguments by running `python src/siamese_zone/run_siamese.py -h`.
+    1. Run `python src/siamese_network/train.py`. See all available arguments by running `python src/siamese_network/train.py -h`.
+    1. Run `python src/siamese_network/test.py`. See all available arguments by running `python src/siamese_network/test.py -h`.
 ## Project Info
 week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
 1. Run original codes and improve README for reference code

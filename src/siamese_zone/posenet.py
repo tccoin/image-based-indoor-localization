@@ -185,9 +185,7 @@ def create_siamese_keras(weights_path=None, tune=False):
 
 	processed_a = base_network(input_a)
 	processed_b = base_network(input_b)
-	distance = Lambda(euclidean_distance,
-					  output_shape=eucl_dist_output_shape)([processed_a, processed_b])
-	#
+	distance = Lambda(euclidean_distance, output_shape=eucl_dist_output_shape)([processed_a, processed_b])
 	siamesenet = keras.Model(inputs=[input_a, input_b], outputs=distance)
 # 	posenet = keras.Model(inputs=input, outputs=[cls3_fc_pose_all])
 
