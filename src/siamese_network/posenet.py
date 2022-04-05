@@ -11,9 +11,6 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, concatenate, Flatten, Dropout, BatchNormalization, Input
 import numpy as np
-import h5py
-import math
-import run_siamese
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Lambda
 

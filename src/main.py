@@ -1,6 +1,11 @@
-from siamese_network import posenet
-from siamese_network.helper import readDataFromFile, parse_function
+import os.path
+import argparse
 import tensorflow as tf
+from siamese_network import posenet
+from ba.visual_isam2 import VisualISAM2
+from siamese_network.helper import readDataFromFile, parse_function
+import gtsam
+from gtsam.symbol_shorthand import L, X
 
 class ImageBasedLocalization():
     def __init__(self, args):
@@ -12,9 +17,14 @@ class ImageBasedLocalization():
         )
         self.map_data_file = 'data/tfrecord2/train.tfrecords'
         self.test_data_file = 'data/tfrecord2/test.tfrecords'
+        self.map_feature_file = 'data/tfrecord2/test.tfrecords'
+        self.test_feature_file = 'data/tfrecord2/test.tfrecords'
 
         # init model
         self.model, self.batch_size = self.load_model()
+
+        # init isam2
+        self.visam2 = VisualISAM2()
 
     def load_model(self):
         data_dict = readDataFromFile(self.model_info_path)
@@ -32,11 +42,15 @@ class ImageBasedLocalization():
         poses = [x[1].numpy() for x in dataset]
         return dataset, poses
     
+    def load_features(self, feature_path):
+        pass
+    
     def generate_map(self):
         dataset, poses = self.load_tfrecord_dataset(self.map_data_file)
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(5)
-        self.map = self.model.predict(dataset)
+        self.map_descriptors = self.model.predict(dataset)
+        self.map_poses = poses
         # todo: save map
 
     def load_map(self, map_path):
@@ -44,12 +58,31 @@ class ImageBasedLocalization():
 
     def search_image(self, dataset):
         image_descriptor = self.model.predict(dataset)[0]
-        # todo: search in self.map
+        # todo: search in self.map_descriptors, return map_frame_id
         pass
 
+    def get_neighbors(self, i, k):
+        # todo: return knn for i-th map frame, includeing poses, features
+        pass
+
+    def triangulate_landmarks(self, map_frame_id, current_features):
+        neighbors = self.get_neighbors(map_frame_id, 10)
+        # todo: triangulate each landmark in current_features
+        pass
 
     def run_localization(self):
-        pass
+        self.generate_map()
+        dataset, poses = self.load_tfrecord_dataset(self.test_data_file)
+        features = self.load_features(self.test_feature_file)
+        trajectory =  []
+        for i in range(dataset):
+            map_frame_id = self.search_image(dataset[i])
+            triangulated_features = self.triangulate_landmarks(map_frame_id, features[i])
+            current_pose = self.visam2.update(
+                self.map_poses[map_frame_id], triangulated_features
+            )
+            trajectory.append(current_pose)
+        return trajectory
 
 def add_argument(parser):
     parser.add_argument('--model_name',
