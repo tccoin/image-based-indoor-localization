@@ -11,14 +11,20 @@
 int main() {
     std::vector<double> data(128 * 1000000);
 
-    for (int i = 0; i < data.size(); ++i) data[i] = (double) i;
+    for (int i = 0; i < data.size(); ++i) data[i] = (double) i / 128;
 
     init_data(data.data(), data.size());
 
     auto total = std::chrono::high_resolution_clock::duration(0);
 
+    {
+        std::vector<double> input(128, 100.5);
+        std::cout << "Nearest: " << find_nearest(input.data()) << '\n';
+    }
+
+
     for (int i = 0; i < 100; ++i) {
-        std::vector<double> input(128, 1000 * i);
+        std::vector<double> input(128, i);
 
         auto tic = std::chrono::high_resolution_clock::now();
         find_nearest(input.data());
@@ -27,7 +33,7 @@ int main() {
         total += toc - tic;
     }
 
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(total).count();
+    std::cout << "Time for 100 searches: " << std::chrono::duration_cast<std::chrono::milliseconds>(total).count();
 
     return 0;
 }
