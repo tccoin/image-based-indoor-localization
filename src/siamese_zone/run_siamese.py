@@ -85,9 +85,9 @@ class Train():
         self.setTrainingParams()
         
         if self.retrain:
-            print('model will be retrained from the following model name: {}'. format(output_preprocess_file))
+            print('model will be retrained from the following model name: {}'. format(self.output_preprocess_file))
             file_path_valid = Path(self.csv_log_file)
-            assert not csv_log_path.is_file(), \
+            assert not self.csv_log_path.is_file(), \
             'there is no pretrained model info from which model can be loaded... please check the path'
             
     def contrastive_loss(self,y_true, y_pred):
@@ -256,7 +256,7 @@ class Train():
         self.model_json_file = self.output_data_dir + self.weights + '{}_model.json'.format(self.training_name)
         self.threshold_angle = args.threshold_angle
         self.threshold_dist = args.threshold_dist
-        csv_log_path = Path(self.csv_log_file)
+        self.csv_log_path = Path(self.csv_log_file)
         weights_out_path = Path(self.weights_out_file)
 
 
@@ -266,7 +266,7 @@ class Train():
             " is unique. Names set in " \
             " TensorBoard callback."
 
-        assert not csv_log_path.is_file(), \
+        assert not self.csv_log_path.is_file(), \
             "Log file already exist. Ensure" \
             " that the name you have entered" \
             " is unique. Names set in " \
@@ -759,7 +759,7 @@ if __name__ == '__main__':
 
     # Flags needed for Training or retraining
     parser.add_argument('--retrain', default=False, help='if retraining from a check point', action='store')
-    parser.add_argument('--train', default=True, help='train normal to estimate 7 paramters', action='store')
+    parser.add_argument('--train', default=False, help='train normal to estimate 7 paramters', action='store')
     parser.add_argument('--sample_train', default=False, help='only use to check the data flow and tensor graph', action='store')
     parser.add_argument('--train_2d', default=False, help='make the pose problem a 2d problem, so only train on x,y, yaw', action='store')
 
