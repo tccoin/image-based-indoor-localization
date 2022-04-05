@@ -26,10 +26,13 @@
     4. Run `python scripts/split_dataset.py`
     5. Run `python scripts/generate_tf_records.py`
 3. Compile fast searching module
-    1. Go to `cd src/search`
-    2. Run `mkdir cmake-build-release`
-    3. Run `cmake -DCMAKE_BUILD_TYPE=Release ..`
-    4. Run `make -j8`
+    ```bash
+    cd src/search
+    mkdir cmake-build-release
+    cd cmake-build-release
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make -j8
+    ```
 4. Train the model
     1. Install tensorflow-gpu, opencv and related libraries.
     1. Create folders for storing results:

@@ -131,3 +131,5 @@ dmypy.json
 # data
 data/
 model/chess/
+cmake-build-release/
+build/
