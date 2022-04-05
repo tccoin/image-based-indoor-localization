@@ -1,6 +1,6 @@
 import ctypes
 
-_lib = ctypes.CDLL("cmake-build-debug/search")
+_lib = ctypes.CDLL("cmake-build-release/search")
 _lib.init_data.argtypes = (ctypes.POINTER(ctypes.c_double), ctypes.c_size_t)
 _lib.find_nearest.argtypes = (ctypes.POINTER(ctypes.c_double),)
 

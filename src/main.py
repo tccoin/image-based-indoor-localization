@@ -1,8 +1,9 @@
+import argparse
 import os
 from siamese_network import posenet
 from siamese_network.helper import readDataFromFile, parse_function
 import tensorflow as tf
-import search
+from search import search
 
 
 class ImageBasedLocalization:
@@ -39,6 +40,10 @@ class ImageBasedLocalization:
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(5)
         self.map = self.model.predict(dataset)
+
+        # upload map to GPU for fast search
+        search.init_data(self.map)
+
         # todo: save map
 
     def load_map(self, map_path):
@@ -46,8 +51,8 @@ class ImageBasedLocalization:
 
     def search_image(self, dataset):
         image_descriptor = self.model.predict(dataset)[0]
-        # todo: search in self.map
-        pass
+        index = search.find_nearest(image_descriptor)
+        return index, self.map[index]
 
     def run_localization(self):
         pass

@@ -48,6 +48,11 @@ void init_data(const double* data, size_t size) {
 }
 
 int find_nearest(const double* input) {
+    if (!dev_data) {
+        std::cerr << "Error: Database not loaded. Please call init_data() first." << std::endl;
+        return -1;
+    }
+
     device_vector<double> dev_reduced_keys(dev_data->size() / 128);
     device_vector<double> dev_reduced_data(dev_data->size() / 128);
 
