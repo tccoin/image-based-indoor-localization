@@ -15,13 +15,15 @@ using thrust::make_transform_iterator;
 using thrust::make_zip_iterator;
 using thrust::make_permutation_iterator;
 
+constexpr size_t vector_length = 128;
+
 std::unique_ptr<device_vector<double>> dev_data(nullptr);
 
 template<typename T>
 struct key_functor {
     __host__ __device__
     constexpr T operator()(T index) {
-        return index / T(128);
+        return index / T(vector_length);
     }
 };
 
@@ -29,7 +31,7 @@ template<typename T>
 struct input_functor {
     __host__ __device__
     constexpr T operator()(T index) {
-        return index % T(128);
+        return index % T(vector_length);
     }
 };
 
@@ -37,7 +39,7 @@ template<typename T>
 struct diff_functor {
     template<class Tuple>
     __host__ __device__
-    T operator()(Tuple t) {
+    constexpr T operator()(Tuple t) {
         return thrust::get<0>(t) - thrust::get<1>(t);
     }
 };
@@ -56,8 +58,8 @@ int find_nearest(const double* input) {
     device_vector<double> dev_reduced_keys(dev_data->size() / 128);
     device_vector<double> dev_reduced_data(dev_data->size() / 128);
 
-    device_vector<double> dev_input(128);
-    copy(input, input + 128, dev_input.begin());
+    device_vector<double> dev_input(vector_length);
+    copy(input, input + vector_length, dev_input.begin());
 
     auto input_counter = make_counting_iterator(0);
     auto repeat_input_counter = make_transform_iterator(input_counter, input_functor<int>());
