@@ -545,12 +545,12 @@ def customPredictSiamese_tf2(
     for i in p(range(test_results.shape[0])):
         # Search the optimal by brutal force
         
-        start = time.time()
-        for k in range(len(train_results)):
-            scores[k] = np.linalg.norm(test_results[i] - train_results[k])
-        max_score_id = np.argmin(scores)
-        bf_time += time.time() - start
-        max_score_id1 = max_score_id
+        # start = time.time()
+        # for k in range(len(train_results)):
+        #     scores[k] = np.linalg.norm(test_results[i] - train_results[k])
+        # max_score_id = np.argmin(scores)
+        # bf_time += time.time() - start
+        # max_score_id1 = max_score_id
 
         # Search the optimal by GPU search
         start = time.time()
@@ -565,7 +565,9 @@ def customPredictSiamese_tf2(
             2*threshold_anlge,
             4*threshold_dist
         )
-        results[i] = 0
+        results[i] = not bool_similar
+        results_dist[i] = distDif
+        results_angle[i] = angleDif
 
     search.cleanup()
 
