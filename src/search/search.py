@@ -1,6 +1,10 @@
 import ctypes
+import platform
 
-_lib = ctypes.CDLL("cmake-build-release/search")
+if platform.system()=='Linux':
+    _lib = ctypes.CDLL("src/search/cmake-build-release/libsearch.so")
+elif platform.system()=='Windows':
+    _lib = ctypes.CDLL("src/search/cmake-build-release/search")
 _lib.init_data.argtypes = (ctypes.POINTER(ctypes.c_double), ctypes.c_size_t)
 _lib.find_nearest.argtypes = (ctypes.POINTER(ctypes.c_double),)
 
