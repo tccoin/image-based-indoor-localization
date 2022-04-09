@@ -1,9 +1,0 @@
-Ia = imread(fullfile('data','roofs1.jpg')) ;
-Ib = imread(fullfile('data','roofs2.jpg')) ;
-Ia = rgb2gray(Ia);
-Ib = rgb2gray(Ib);
-Ia = single(Ia);
-Ib = single(Ib);
-[fa, da] = vl_sift(Ia) ;
-[fb, db] = vl_sift(Ib) ;
-[matches, scores] = vl_ubcmatch(da, db) ;
