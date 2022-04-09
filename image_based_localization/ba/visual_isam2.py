@@ -4,6 +4,7 @@ import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
 from gtsam.symbol_shorthand import L, X
+import random
 
 
 def visual_ISAM2_plot(result, gt):
@@ -46,10 +47,10 @@ def visual_ISAM2_plot(result, gt):
 class VisualISAM2():
     def __init__(self):
         self.K = gtsam.Cal3_S2(552, 555, 0.0, 306, 234) # camera matrix
-        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 10.0) # observation noise model
+        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1.0) # observation noise model
         self.point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
         self.pose_noise = gtsam.noiseModel.Diagonal.Sigmas(
-            np.array([0.1, 0.1, 0.1, 0.3, 0.3, 0.3]
+            np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         ))
 
     def update(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses):
@@ -71,20 +72,20 @@ class VisualISAM2():
         
         for landmark_id, match_frame_id in enumerate(match_frame_ids):
             measurements = uv_points[landmark_id]
+            # landmark_position = [0,0,0]
             landmark_position = xyz_points[landmark_id]
             initial_estimate.insert(L(landmark_id), gtsam.Point3(*landmark_position))
             graph.push_back(gtsam.PriorFactorPoint3(
                 L(landmark_id), gtsam.Point3(*landmark_position), self.point_noise
             ))
-            for i in range(len(match_frame_id)):
+            for measurement_index, frame_id in enumerate(match_frame_id):
                 graph.push_back(gtsam.GenericProjectionFactorCal3_S2(
-                    measurements[i], self.measurement_noise, X(i),
+                    measurements[measurement_index], self.measurement_noise, X(frame_id),
                     L(landmark_id), self.K
                 ))
 
         # set neighbor initial poses
-        for i, neighbor_pose in enumerate(neighbor_poses):
-            pose = neighbor_poses[i]
+        for i, pose in enumerate(neighbor_poses):
             pose = gtsam.Pose3(
                 gtsam.Rot3.Quaternion(pose[6],*pose[3:6]),
                 gtsam.Point3(pose[0:3])
@@ -130,10 +131,10 @@ class VisualISAM2():
         
         for landmark_id, match_frame_id in enumerate(match_frame_ids):
             measurements = uv_points[landmark_id]
-            for i in range(len(match_frame_id)):
-                smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
-                smart_factor.add(measurements[i], X(i))
-                graph.push_back(smart_factor)
+            smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
+            for measurement_index, frame_id in enumerate(match_frame_id):
+                smart_factor.add(measurements[measurement_index], X(frame_id))
+            graph.push_back(smart_factor)
 
         # set neighbor initial poses
         for i, neighbor_pose in enumerate(neighbor_poses):
@@ -143,10 +144,9 @@ class VisualISAM2():
                 gtsam.Point3(pose[0:3])
             )
             initial_estimate.insert(X(i), pose)
-            if i != test_frame_id:
-                graph.push_back(gtsam.PriorFactorPose3(
-                    X(i), pose, self.pose_noise
-                ))
+            graph.push_back(gtsam.PriorFactorPose3(
+                X(i), pose, self.pose_noise
+            ))
 
         # isam optimize
         # parameters = gtsam.ISAM2Params()
