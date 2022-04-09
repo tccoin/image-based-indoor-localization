@@ -1,0 +1,169 @@
+"""
+GTSAM Copyright 2010-2018, Georgia Tech Research Corporation,
+Atlanta, Georgia 30332-0415
+All Rights Reserved
+Authors: Frank Dellaert, et al. (see THANKS for the full author list)
+
+See LICENSE for the license information
+
+An example of running visual SLAM using iSAM2.
+Author: Duy-Nguyen Ta (C++), Frank Dellaert (Python)
+"""
+# pylint: disable=invalid-name, E1101
+
+from __future__ import print_function
+
+import gtsam
+import gtsam.utils.plot as gtsam_plot
+import matplotlib.pyplot as plt
+import numpy as np
+from gtsam.symbol_shorthand import L, X
+from gtsam.examples import SFMdata
+from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=W0611
+import time
+
+
+def visual_ISAM2_plot(result, gt_poses):
+    """
+    VisualISAMPlot plots current state of ISAM2 object
+    Author: Ellon Paiva
+    Based on MATLAB version by: Duy Nguyen Ta and Frank Dellaert
+    """
+
+    # Declare an id for the figure
+    fignum = 0
+
+    fig = plt.figure(fignum)
+    axes = fig.gca(projection='3d')
+    plt.cla()
+
+    # Plot points
+    # Can't use data because current frame might not see all points
+    # marginals = Marginals(isam.getFactorsUnsafe(), isam.calculateEstimate())
+    # gtsam.plot_3d_points(result, [], marginals)
+    gtsam_plot.plot_3d_points(fignum, result, 'rx')
+
+    # Plot cameras
+    i = 0
+    while result.exists(X(i)):
+        pose_i = result.atPose3(X(i))
+        gtsam_plot.plot_pose3(fignum, pose_i, 10)
+        gtsam_plot.plot_pose3(fignum, gt_poses[i], 5)
+        i += 1
+
+
+    # draw
+    axes.set_xlim3d(-40, 40)
+    axes.set_ylim3d(-40, 40)
+    axes.set_zlim3d(-40, 40)
+    # plt.pause(0.5)
+
+
+def visual_ISAM2_example():
+    plt.ion()
+
+    # Define the camera calibration parameters
+    K = gtsam.Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0)
+
+    # Define the camera observation noise model
+    measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1.0)  # one pixel in u and v
+
+    # Create the set of ground-truth landmarks
+    points = SFMdata.createPoints()
+
+    # Create the set of ground-truth poses
+    poses = SFMdata.createPoses(K)
+
+    # Create an iSAM2 object. Unlike iSAM1, which performs periodic batch steps
+    # to maintain proper linearization and efficient variable ordering, iSAM2
+    # performs partial relinearization/reordering at each step. A parameter
+    # structure is available that allows the user to set various properties, such
+    # as the relinearization threshold and type of linear solver. For this
+    # example, we we set the relinearization threshold small so the iSAM2 result
+    # will approach the batch result.
+    parameters = gtsam.ISAM2Params()
+    parameters.setRelinearizeThreshold(0.01)
+    # parameters.relinearizeSkip = 1
+    isam = gtsam.ISAM2(parameters)
+
+    # Create a Factor Graph and Values to hold the new data
+    graph = gtsam.NonlinearFactorGraph()
+    initial_estimate = gtsam.Values()
+
+    # smart config
+    min_measurements = 3
+    smartFactors = {}
+    current_estimate = gtsam.Values()
+
+    # debug
+    optimize_time = 0
+
+    #  Loop over the different poses, adding the observations to iSAM incrementally
+    for i, pose in enumerate(poses):
+        # print(pose)
+        # Add factors for each landmark observation
+        for j, point in enumerate(points):
+            camera = gtsam.PinholeCameraCal3_S2(pose, K)
+            measurement = camera.project(point) # + np.random.normal(0, 2)
+            if not j in smartFactors:
+                smartFactors[j] = gtsam.SmartProjectionPose3Factor(measurement_noise, K)
+            # graph.add(smartFactors[j])
+            smartFactors[j].add(measurement, X(i))
+            
+            if smartFactors[j].size() >= min_measurements:
+                graph.add(smartFactors[j])
+                
+
+        # Add an initial guess for the current pose
+        # Intentionally initialize the variables off from the ground truth
+        # initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
+        #     gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(1, -1, 1))))
+        if i<=3:
+            # initial_estimate.insert(X(i), pose)
+            initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
+                gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(1, -1, 1))))
+        else:
+            initial_estimate.insert(X(i), current_estimate.atPose3(X(i-1)))
+
+        # If this is the first iteration, add a prior on the first pose to set the
+        # coordinate frame and a prior on the first landmark to set the scale.
+        # Also, as iSAM solves incrementally, we must wait until each is observed
+        # at least twice before adding it to iSAM.
+        if i <= 1:
+            # Add a prior on pose x0
+            pose_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array(
+                [0.5, 0.5, 0.5, 1, 1, 1]))  # 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+            graph.push_back(gtsam.PriorFactorPose3(X(i), poses[i], pose_noise))
+
+        if i >= 2:
+            print("****************************************************")
+            print("Frame", i)
+            # Update iSAM with the new factors
+            start = time.time()
+            isam.update(graph, initial_estimate)
+            # Each call to iSAM2 update(*) performs one iteration of the iterative nonlinear solver.
+            # If accuracy is desired at the expense of time, update(*) can be called additional
+            # times to perform multiple optimizer iterations every step.
+            isam.update()
+            current_estimate = isam.calculateEstimate()
+            optimize_time += time.time()-start
+
+            # graph.print()
+            # initial_estimate.print()
+
+            # print(X(j), ":", graph.print())
+            # for j in range(i + 1):
+            #     print(X(j), ":", current_estimate.atPose3(X(j)))
+
+            # visual_ISAM2_plot(current_estimate, poses)
+
+            # Clear the factor graph and values for the next iteration
+            graph.resize(0)
+            initial_estimate.clear()
+    print('optimize_time: ', optimize_time)
+    # plt.ioff()
+    # plt.show()
+
+
+if __name__ == '__main__':
+    visual_ISAM2_example()
