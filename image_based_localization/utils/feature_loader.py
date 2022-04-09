@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 class FeatureLoader():
 
@@ -7,7 +8,10 @@ class FeatureLoader():
 
     def load(self, frame_id):
         filename = '{}.csv'.format(frame_id+1) # filename begins with 1.csv
-        with open('{}neighbor_id/{}'.format(self.feature_path, filename)) as f:
+        filepath = '{}neighbor_id/{}'.format(self.feature_path, filename)
+        if not os.path.exists(filepath):
+            return [], [], [], []
+        with open(filepath) as f:
             lines = f.readlines()
             neighbor_ids = [int(l)-1 for l in lines]
         with open('{}viewIds_matches/{}'.format(self.feature_path, filename)) as f:

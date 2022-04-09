@@ -111,7 +111,7 @@ class VisualISAM2():
 
         return self.current_estimate.atPose3(X(test_frame_id))
 
-    def update_smart_factor(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses):
+    def update_smart_factor(self, neighbor_ids, match_frame_ids, uv_points, pose_initial_guess, neighbor_poses):
 
         plt.ion()
 
@@ -130,7 +130,6 @@ class VisualISAM2():
         
         for landmark_id, match_frame_id in enumerate(match_frame_ids):
             measurements = uv_points[landmark_id]
-            landmark_position = xyz_points[landmark_id]
             for i in range(len(match_frame_id)):
                 smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
                 smart_factor.add(measurements[i], X(i))
