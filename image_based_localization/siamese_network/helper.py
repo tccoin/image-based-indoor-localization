@@ -577,20 +577,21 @@ def customPredictSiamese_tf2(
     print(median_result_str)
 
     # Calculate groundtruth
-    # groundtruth = []
-    # for i in range(len(pose_test)):
-    #     bool_find = False
-    #     for k in range(len(pose_train)):
-    #         [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[k], pose_test[i], threshold_anlge,
-    #                                           threshold_dist)
-    #         if bool_similar:
-    #             groundtruth += [k]
-    #             bool_find = True
-    #             break
-    #     if not bool_find:
-    #         groundtruth += [-1]
+    groundtruth = []
+    p = progressbar.ProgressBar()
+    for i in p(range(len(pose_test))):
+        bool_find = False
+        for k in range(len(pose_train)):
+            [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[k], pose_test[i], threshold_anlge,
+                                              threshold_dist)
+            if bool_similar:
+                groundtruth += [k]
+                bool_find = True
+                break
+        if not bool_find:
+            groundtruth += [-1]
 
-    # save_siamese_data(prediction, groundtruth, save_output_data_file)
+    save_siamese_data(prediction, groundtruth, save_output_data_file)
 
     return median_result
 

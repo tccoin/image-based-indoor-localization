@@ -1,3 +1,4 @@
+import enum
 import gtsam
 import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
@@ -5,7 +6,7 @@ import numpy as np
 from gtsam.symbol_shorthand import L, X
 
 
-def visual_ISAM2_plot(result):
+def visual_ISAM2_plot(result, gt):
     """
     VisualISAMPlot plots current state of ISAM2 object
     Author: Ellon Paiva
@@ -29,63 +30,143 @@ def visual_ISAM2_plot(result):
     i = 0
     while result.exists(X(i)):
         pose_i = result.atPose3(X(i))
-        gtsam_plot.plot_pose3(fignum, pose_i, 10)
+        if i==7:
+            gtsam_plot.plot_pose3(fignum, pose_i, 6)
+        else:
+            gtsam_plot.plot_pose3(fignum, pose_i, 3)
         i += 1
+    gtsam_plot.plot_pose3(fignum, gt, 10)
 
     # draw
-    axes.set_xlim3d(-40, 40)
-    axes.set_ylim3d(-40, 40)
-    axes.set_zlim3d(-40, 40)
-    plt.pause(1)
+    axes.set_xlim3d(-6, 6)
+    axes.set_ylim3d(-6, 6)
+    axes.set_zlim3d(-6, 6)
+    plt.pause(2)
 
 class VisualISAM2():
     def __init__(self):
-        self.K = gtsam.Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0) # camera matrix
-        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1.0) # observation noise model
+        self.K = gtsam.Cal3_S2(552, 555, 0.0, 306, 234) # camera matrix
+        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 10.0) # observation noise model
+        self.point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
+        self.pose_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array([0.1, 0.1, 0.1, 0.3, 0.3, 0.3]
+        ))
 
-        # params
-        parameters = gtsam.ISAM2Params()
-        parameters.setRelinearizeThreshold(0.01)
-        parameters.relinearizeSkip = 1
-        self.isam = gtsam.ISAM2(parameters)
+    def update(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses):
+
+        plt.ion()
 
         # graph and values
-        self.graph = gtsam.NonlinearFactorGraph()
-        self.initial_estimate = gtsam.Values()
+        graph = gtsam.NonlinearFactorGraph()
+        initial_estimate = gtsam.Values()
 
-        # frame id
-        self.frame_id = 0
+        # update data to include test frame
+        test_frame_id = len(neighbor_ids)
+        id_map = {x:i for i, x in enumerate(neighbor_ids)}
+        match_frame_ids = [[test_frame_id]+[id_map[y] for y in x] for x in match_frame_ids]
+        neighbor_ids = neighbor_ids + [test_frame_id]
+        neighbor_poses = neighbor_poses + [pose_initial_guess]
 
-    def update(self, nearest_neighbor_pose, features):
-        # add landmarks
-        for landmark_id, landmark_position, measurement in features:
-            self.graph.push_back(gtsam.GenericProjectionFactorCal3_S2(
-                measurement, self.measurement_noise, X(self.frame_id), L(landmark_id), self.K
+        # create projection factors
+        
+        for landmark_id, match_frame_id in enumerate(match_frame_ids):
+            measurements = uv_points[landmark_id]
+            landmark_position = xyz_points[landmark_id]
+            initial_estimate.insert(L(landmark_id), gtsam.Point3(*landmark_position))
+            graph.push_back(gtsam.PriorFactorPoint3(
+                L(landmark_id), gtsam.Point3(*landmark_position), self.point_noise
             ))
-            self.initial_estimate.insert(L(landmark_id), landmark_position)
+            for i in range(len(match_frame_id)):
+                graph.push_back(gtsam.GenericProjectionFactorCal3_S2(
+                    measurements[i], self.measurement_noise, X(i),
+                    L(landmark_id), self.K
+                ))
 
-        # use pose of nearest neighbor in map as initial estimate
-        self.initial_estimate.insert(X(self.frame_id), nearest_neighbor_pose)
+        # set neighbor initial poses
+        for i, neighbor_pose in enumerate(neighbor_poses):
+            pose = neighbor_poses[i]
+            pose = gtsam.Pose3(
+                gtsam.Rot3.Quaternion(pose[6],*pose[3:6]),
+                gtsam.Point3(pose[0:3])
+            )
+            initial_estimate.insert(X(i), pose)
+            if i != test_frame_id:
+                graph.push_back(gtsam.PriorFactorPose3(
+                    X(i), pose, self.pose_noise
+                ))
 
-        if self.frame_id == 0:
-            # add prior (30cm std on x,y,z 0.1 rad on roll,pitch,yaw)
-            pose_noise = gtsam.noiseModel.Diagonal.Sigmas(
-                np.array([0.1, 0.1, 0.1, 0.3, 0.3, 0.3]
-            ))
-            self.graph.push_back(gtsam.PriorFactorPose3(X(0), nearest_neighbor_pose, pose_noise))
-            point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
-            self.graph.push_back(gtsam.PriorFactorPoint3(
-                L(0), gtsam.Point3(0,0,0), point_noise))
-        else:
-            # optimize
-            self.isam.update(self.graph, self.initial_estimate)
-            self.current_estimate = self.isam.calculateEstimate()
-        self.frame_id += 1
+        # isam optimize
+        # parameters = gtsam.ISAM2Params()
+        # parameters.setRelinearizeThreshold(0.01)
+        # isam = gtsam.ISAM2(parameters)
+        # isam.update(graph, initial_estimate)
+        # self.current_estimate = isam.calculateEstimate()
 
-    def plot(self):
-        visual_ISAM2_plot(self.current_estimate)
-        plt.ioff()
-        plt.show()
+        # batch optimize
+        optimizer = gtsam.GaussNewtonOptimizer(graph, initial_estimate)
+        try:
+            self.current_estimate = optimizer.optimize()
+        except:
+            return gtsam.Pose3()
+
+        return self.current_estimate.atPose3(X(test_frame_id))
+
+    def update_smart_factor(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses):
+
+        plt.ion()
+
+        # graph and values
+        graph = gtsam.NonlinearFactorGraph()
+        initial_estimate = gtsam.Values()
+
+        # update data to include test frame
+        test_frame_id = len(neighbor_ids)
+        id_map = {x:i for i, x in enumerate(neighbor_ids)}
+        match_frame_ids = [[test_frame_id]+[id_map[y] for y in x] for x in match_frame_ids]
+        neighbor_ids = neighbor_ids + [test_frame_id]
+        neighbor_poses = neighbor_poses + [pose_initial_guess]
+
+        # create projection factors
+        
+        for landmark_id, match_frame_id in enumerate(match_frame_ids):
+            measurements = uv_points[landmark_id]
+            landmark_position = xyz_points[landmark_id]
+            for i in range(len(match_frame_id)):
+                smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
+                smart_factor.add(measurements[i], X(i))
+                graph.push_back(smart_factor)
+
+        # set neighbor initial poses
+        for i, neighbor_pose in enumerate(neighbor_poses):
+            pose = neighbor_poses[i]
+            pose = gtsam.Pose3(
+                gtsam.Rot3.Quaternion(pose[6],*pose[3:6]),
+                gtsam.Point3(pose[0:3])
+            )
+            initial_estimate.insert(X(i), pose)
+            if i != test_frame_id:
+                graph.push_back(gtsam.PriorFactorPose3(
+                    X(i), pose, self.pose_noise
+                ))
+
+        # isam optimize
+        # parameters = gtsam.ISAM2Params()
+        # parameters.setRelinearizeThreshold(0.01)
+        # isam = gtsam.ISAM2(parameters)
+        # isam.update(graph, initial_estimate)
+        # self.current_estimate = isam.calculateEstimate()
+
+        # batch optimize
+        optimizer = gtsam.DoglegOptimizer(graph, initial_estimate)
+        self.current_estimate = optimizer.optimize()
+
+        return self.current_estimate.atPose3(X(test_frame_id))
+    
+
+    def plot(self, gt):
+        visual_ISAM2_plot(self.current_estimate, gt)
+        # plt.ioff()
+        # plt.show()
 
 
 if __name__ == '__main__':

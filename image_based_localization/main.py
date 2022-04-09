@@ -2,10 +2,13 @@ import argparse
 import os
 import tensorflow as tf
 from siamese_network import posenet
-from siamese_network.helper import readDataFromFile, parse_function
+from siamese_network.helper import readDataFromFile, parse_function, angleDifference, distDifference
 from ba.visual_isam2 import VisualISAM2
 from search import search
-
+from utils.feature_loader import FeatureLoader
+import gtsam
+import numpy as np
+import matplotlib.pyplot as plt
 
 class ImageBasedLocalization:
     def __init__(self, args):
@@ -14,11 +17,11 @@ class ImageBasedLocalization:
             args.model_name,
             args.model_name
         )
-        self.map_data_file = 'data/tfrecord2/train.tfrecords'
-        self.test_data_file = 'data/tfrecord2/test.tfrecords'
-        self.map_feature_file = 'data/tfrecord2/test.tfrecords'
-        self.test_feature_file = 'data/tfrecord2/test.tfrecords'
-
+        self.map_data_file = 'data/{}/tfrecord2/train.tfrecords'.format(args.model_name)
+        self.test_data_file = 'data/{}/tfrecord2/test.tfrecords'.format(args.model_name)
+        self.map_feature_file = 'data/{}/tfrecord2/test.tfrecords'.format(args.model_name)
+        self.test_feature_file = 'data/{}/tfrecord2/test.tfrecords'.format(args.model_name)
+        self.feature_path = 'data/{}/features/'.format(args.model_name)
         # init model
         self.model, self.batch_size = self.load_model()
 
@@ -29,6 +32,10 @@ class ImageBasedLocalization:
         data_dict = readDataFromFile(self.model_info_path)
         model = posenet.create_siamese_keras()
         model.load_weights(data_dict['posenet_weight_file'])
+        model = tf.keras.Model(
+            inputs=model.layers[2].input,
+            outputs=model.layers[2].get_layer('cls3_fc_pose_xyz').output
+        )
         batch_size = data_dict['posenet_batch_size']
         return model, batch_size
 
@@ -39,6 +46,8 @@ class ImageBasedLocalization:
         )
         dataset = dataset.map(parse_function)
         poses = [x[1].numpy() for x in dataset]
+        dataset = dataset.batch(self.batch_size)
+        dataset = dataset.prefetch(5)
         return dataset, poses
     
     def load_features(self, feature_path):
@@ -46,8 +55,6 @@ class ImageBasedLocalization:
     
     def generate_map(self):
         dataset, poses = self.load_tfrecord_dataset(self.map_data_file)
-        dataset = dataset.batch(self.batch_size)
-        dataset = dataset.prefetch(5)
         self.map_descriptors = self.model.predict(dataset)
         self.map_poses = poses
         # upload map to GPU for fast search
@@ -57,32 +64,53 @@ class ImageBasedLocalization:
     def load_map(self, map_path):
         pass
 
-    def search_image(self, dataset):
-        image_descriptor = self.model.predict(dataset)[0]
-        return search.find_nearest(image_descriptor)
-
-    def get_neighbors(self, i, k):
-        # todo: return knn for i-th map frame, includeing poses, features
-        pass
-
-    def triangulate_landmarks(self, map_frame_id, current_features):
-        neighbors = self.get_neighbors(map_frame_id, 10)
-        # todo: triangulate each landmark in current_features
-        pass
+    def search_image(self, descriptor):
+        return search.find_nearest(descriptor)
 
     def run_localization(self):
         self.generate_map()
         dataset, poses = self.load_tfrecord_dataset(self.test_data_file)
-        features = self.load_features(self.test_feature_file)
+        descriptors = self.model.predict(dataset)
+        feature_loader = FeatureLoader(self.feature_path)
         trajectory =  []
-        for i in range(dataset):
-            map_frame_id = self.search_image(dataset[i])
-            triangulated_features = self.triangulate_landmarks(map_frame_id, features[i])
-            current_pose = self.visam2.update(
-                self.map_poses[map_frame_id], triangulated_features
+        num_gap = 1
+        total = 400
+        N = total//num_gap
+        dist_diff = np.zeros(N)
+        angle_diff = np.zeros(N)
+        plt.switch_backend('Qt5Agg')
+        for i in range(0,total,num_gap):
+            descriptor = descriptors[i]
+            map_frame_id = self.search_image(descriptor)
+            neighbor_ids, match_frame_ids, uv_points, xyz_points = feature_loader.load(i)
+            pose_initial_guess = self.map_poses[map_frame_id]
+            neighbor_poses = [self.map_poses[x] for x in neighbor_ids]
+            estimated_pose = self.visam2.update(
+                neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses
             )
-            trajectory.append(current_pose)
+            dist_diff[i//num_gap], angle_diff[i//num_gap] = self.calc_error(poses[i], estimated_pose)
+            print(i, 'dist diff:', dist_diff[i//num_gap],'angle diff:', angle_diff[i//num_gap])
+            # self.visam2.plot(gtsam.Pose3(
+            #     gtsam.Rot3.Quaternion(poses[i][6],*poses[i][3:6]),
+            #     gtsam.Point3(poses[i][0:3])
+            # ))
+            trajectory.append(estimated_pose)
+        print(np.median(dist_diff), np.median(angle_diff))
+        plt.plot(np.arange(total), dist_diff)
+        plt.show()
+        plt.pause(5)
+        plt.plot(np.arange(total), angle_diff)
+        plt.show()
+        plt.pause(5)
         return trajectory
+
+    def calc_error(self, gt_pose, estimated_pose):
+        quat = estimated_pose.rotation().quaternion()
+        quat = np.hstack([quat[1:],quat[0]])
+        dist_diff = distDifference(estimated_pose.translation(), gt_pose[0:3])
+        angle_diff = angleDifference(quat, gt_pose[3:])
+        return dist_diff, angle_diff
+            
 
     def cleanup(self):
         search.cleanup()
@@ -104,5 +132,5 @@ if __name__ == '__main__':
     print("flags argument: {}".format(args))
 
     ibl = ImageBasedLocalization(args)
-    ibl.search_image()
+    ibl.run_localization()
     ibl.cleanup()

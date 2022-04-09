@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from gtsam.symbol_shorthand import L, X
 from gtsam.examples import SFMdata
-from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=W0611
 import time
 
 def visual_ISAM2_plot(result, gt_poses):
@@ -55,7 +54,7 @@ def visual_ISAM2_plot(result, gt_poses):
     axes.set_xlim3d(-40, 40)
     axes.set_ylim3d(-40, 40)
     axes.set_zlim3d(-40, 40)
-    # plt.pause(1)
+    plt.pause(1)
 
 
 def visual_ISAM2_example():
@@ -154,7 +153,7 @@ def visual_ISAM2_example():
             # print('estimated: ', current_estimate.atPose3(X(i)))
             # print('gt: ', pose)
 
-            # visual_ISAM2_plot(current_estimate, poses)
+            visual_ISAM2_plot(current_estimate, poses)
 
             # Clear the factor graph and values for the next iteration
             graph.resize(0)
