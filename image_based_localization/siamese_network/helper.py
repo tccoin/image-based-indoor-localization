@@ -7,7 +7,7 @@ import random
 import math
 import h5py
 import tensorflow as tf
-from custom_callbacks import BatchCSVLogger, TensorBoard
+from siamese_network.custom_callbacks import BatchCSVLogger, TensorBoard
 from tensorflow.keras import callbacks
 from tensorflow.keras import backend as K
 from matplotlib import pyplot as plt
@@ -525,15 +525,7 @@ def customPredictSiamese_tf2(
     results_angle = np.zeros((len(test_results), 1), dtype=float)
 
 
-    #   Use nearpy
-    dimension = train_results.shape[1]
-    # Create a random binary hash with 10 bits
-    rbp = RandomBinaryProjections('rbp', 10)
-    # Create engine with pipeline configuration
-    engine = Engine(dimension, lshashes=[rbp])
-    for index in range(train_results.shape[0]):
-        engine.store_vector(train_results[index,:],index)
-
+    # init gpu search
     search.init_data(train_results)
     scores = np.zeros(len(train_results), dtype=float)
     
@@ -591,11 +583,11 @@ def customPredictSiamese_tf2(
     #     for k in range(len(pose_train)):
     #         [bool_similar, distDif, angleDif] = getImageSimilarity(pose_train[k], pose_test[i], threshold_anlge,
     #                                           threshold_dist)
-    #         if bool_similar == True:
+    #         if bool_similar:
     #             groundtruth += [k]
     #             bool_find = True
     #             break
-    #     if bool_find == False:
+    #     if not bool_find:
     #         groundtruth += [-1]
 
     # save_siamese_data(prediction, groundtruth, save_output_data_file)
@@ -855,28 +847,16 @@ def plot_trajectory(x_predicted, y_predicted, x_label, y_label, pos_error, time_
 
 
 def save_siamese_data(prediction, x_label, save_output_data_file):
-    # 	output_file_plot = '/ssd/data/fxpal_dataset/posenetDataset/posenet_brendan/posenet_data/results/{}_plot_data.h5py'.format(training_name)
-    # 	output_file_cdf = '/ssd/data/fxpal_dataset/posenetDataset/posenet_brendan/posenet_data/results/{}_cdf_data.h5py'.format(training_name)
-
     x_estimate = np.asarray(prediction)
-
-    # x_actual = np.asarray(x_label)
-
     x_estimate,x_actual = np.squeeze(x_estimate),np.squeeze(x_label)
-    #
-    # rmse_xyz = x_estimate - x_actual
 
     with h5py.File(save_output_data_file, 'w') as f:
         x_label_set = f.create_dataset('posenet_x_label', (len(x_label), 1), dtype=np.float)
-
         x_prediced_set = f.create_dataset('posenet_x_predicted', (len(prediction), len(prediction[0])), dtype=np.float)
-
-        # rmse_xyz_set = f.create_dataset('posenet_rmse_xyz', (len(rmse_xyz), 1), dtype=np.float)
 
         for i in range(len(x_label)):
             x_label_set[i] = x_label[i]
             x_prediced_set[i] = prediction[i]
-            # rmse_xyz_set[i] = rmse_xyz[i]
 
     f.close()
 

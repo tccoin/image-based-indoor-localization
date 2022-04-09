@@ -342,7 +342,7 @@ class ClearMemory(Callback):
 def add_argument(parser):
 
     # training and testing names
-    dataset_name = 'ethl1_local'
+    dataset_name = 'chess'
     parser.add_argument('--training_name', default=dataset_name, help='name of training', action='store')
     parser.add_argument('--training_name_suffix', default='', help='name of training', action='store')
 

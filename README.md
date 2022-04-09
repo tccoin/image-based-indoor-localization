@@ -4,9 +4,9 @@
 
 1. Install libraries:
     ```
-    conda create -n tf -c anaconda -c conda-forge tensorflow-gpu tqdm h5py keras scipy opencv matplotlib
+    conda create -n tf -c anaconda -c conda-forge tensorflow-gpu=2.4.1 opencv
     conda activate tf
-    pip install progressbar nearpy
+    pip install progressbar nearpy tqdm h5py keras scipy matplotlib gtsam
     ```
 2. Data processing
     1. Download [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/) and
@@ -27,7 +27,7 @@
     5. Run `python scripts/generate_tf_records.py`
 3. Compile fast searching module
     ```bash
-    cd src/search
+    cd image_based_localization/search
     mkdir cmake-build-release
     cd cmake-build-release
     cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -42,10 +42,10 @@
         │      ├─training_data_info
         │      └─weights
         ```
-    1. Run `python src/siamese_network/train.py`. See all available arguments by
-       running `python src/siamese_network/train.py -h`.
-    1. Run `python src/siamese_network/test.py`. See all available arguments by
-       running `python src/siamese_network/test.py -h`.
+    1. Run `python image_based_localization/siamese_network/train.py`. See all available arguments by
+       running `python image_based_localization/siamese_network/train.py -h`.
+    1. Run `python image_based_localization/siamese_network/test.py`. See all available arguments by
+       running `python image_based_localization/siamese_network/test.py -h`.
 
 ## Project Info
 

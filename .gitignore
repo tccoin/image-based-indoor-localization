@@ -133,3 +133,5 @@ data/
 model/chess/
 cmake-build-release/
 build/
+reference_pivo/
+reference_sift/
