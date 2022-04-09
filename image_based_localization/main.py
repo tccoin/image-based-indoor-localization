@@ -74,7 +74,7 @@ class ImageBasedLocalization:
         feature_loader = FeatureLoader(self.feature_path)
         trajectory =  []
         num_gap = 1
-        total = 400
+        total = 2000
         N = total//num_gap
         dist_diff = np.zeros(N)
         angle_diff = np.zeros(N)
@@ -83,10 +83,17 @@ class ImageBasedLocalization:
             descriptor = descriptors[i]
             map_frame_id = self.search_image(descriptor)
             neighbor_ids, match_frame_ids, uv_points, xyz_points = feature_loader.load(i)
+            if len(neighbor_ids)==0:
+                dist_diff[i//num_gap], angle_diff[i//num_gap] = 0,0
+                N -= 1
+                continue
             pose_initial_guess = self.map_poses[map_frame_id]
             neighbor_poses = [self.map_poses[x] for x in neighbor_ids]
-            estimated_pose = self.visam2.update(
-                neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses
+            # estimated_pose = self.visam2.update(
+            #     neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses
+            # )
+            estimated_pose = self.visam2.update_smart_factor(
+                neighbor_ids, match_frame_ids, uv_points, pose_initial_guess, neighbor_poses
             )
             dist_diff[i//num_gap], angle_diff[i//num_gap] = self.calc_error(poses[i], estimated_pose)
             print(i, 'dist diff:', dist_diff[i//num_gap],'angle diff:', angle_diff[i//num_gap])
