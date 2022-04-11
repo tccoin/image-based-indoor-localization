@@ -1,6 +1,8 @@
 # Image Based Indoor Localization
 
-## Installation
+An image-based localization framework based on work of Song et al, featuring hardware-accelerated image searching​ and optimization with GTSAM. We also test PIVO in this project for changing illumination settings, please refer to [PyojinKim/PIVO](https://github.com/PyojinKim/PIVO) for codes.
+
+## Tutorial
 
 1. Install libraries:
     ```
@@ -46,22 +48,53 @@
        running `python image_based_localization/siamese_network/train.py -h`.
     1. Run `python image_based_localization/siamese_network/test.py`. See all available arguments by
        running `python image_based_localization/siamese_network/test.py -h`.
+5. Feature extraction \
+    To compare results with original matlab codes, we use Matlab to produce features and then load them into our graph. In the future, this step will be replaced by OpenCV.
 
-## Project Info
+    1. Create folders for feature data:
+        ```
+        cd reference/matlab/BA_matlab/
+        mkdir -p data/feature_matches_2d data/feature_matches_3d data/neighbor_id data/points_matches data/viewIds_matches
+        ```
+    1. Run `reference/matlab/BA_matlab/Main_GL.m`
+    1. Check the feature files. if they look good, copy them to `data/chess/features` folder: 
+    ```
+        mkdir data/chess/features/
+        cp -r reference/matlab/BA_matlab/data/* data/chess/features/
+    ```
+6. Optimization: run `python image_based_localization/main.py`
 
-week 1: Feb 21-Feb 27, week 7: Apr 4-Apr 10.
+## Code structure
 
-1. Run original codes and improve README for reference code
-1. Read the dataset into Python
-1. Work on improvements
-    1. network/image search
-    2. single image locator with NID
-    3. Replace motion model with pose graph
-1. Run tests & improve the documents
-1. write report and slides
+```
+.
+├── assets: images for this readme
+├── data: dataset and features
+├── experiments: gtsam experiements
+├── image_based_localization: source file
+│   ├── ba: bundle adjustment (GTSAM)
+│   ├── search: GPU accerated search
+│   ├── siamese_network: generate image descriptors
+│   └── utils: who cares
+├── model: weights and outputs for siamese networks
+├── reference: matlab code from original framework
+└── scripts: scripts for preprocessing dataset
+```
 
-## Documents
+## Some results
+- Angle error for chess dataset: \
+    ![](./assets/angle.png)
+- landmark triangulation \
+    ![](./assets/feature%20tracking.png)
 
-- [Fusing Convolutional Neural Network and Geometric Constraint for Image-based Indoor Localization](https://arxiv.org/abs/2201.01408)
-- [RGB-D Dataset 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/)
-- [Slides introducing the method](https://docs.google.com/presentation/d/1TcP9ghPcuDF08yf6W7LYyVBT8AwY06my/edit?usp=sharing&ouid=113322968888661125678&rtpof=true&sd=true)
+## Reference
+
+- [Kim et al., “Robust Visual Odometry to Irregular Illumination Changes with RGB-D Camera”, 2015]​
+
+- [Luca Carlone, Zsolt Kira, Chris Beall, Vadim Indelman, and Frank Dellaert, "Eliminating conditionally independent sets in factor graphs: a unifying perspective based on smart factors", Int. Conf. on Robotics and Automation (ICRA), 2014]
+
+- [Park et al., “Illumination Change Robustness in Direct Visual SLAM”, 2017]​
+
+- [Shotton et al., “Scene Coordinate Regression Forests for Camera Relocalization in RGB-D Images”, 2013]​
+
+- [Song et al., “Fusing Convolutional Neural Network and Geometric Constraint for Image-Based Indoor Localization”, 2022]​
