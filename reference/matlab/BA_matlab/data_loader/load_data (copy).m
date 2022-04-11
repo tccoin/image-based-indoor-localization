@@ -19,7 +19,7 @@ switch dataset_name
     case 'TUM'
         disp(['Loading TUM data set ' subdataset]);
        %%
-       driverpath = '/home/link/Projects/image-based-indoor-localization/data/chess';
+       driverpath = '/home/link/Projects/image-based-indoor-localization/data/ethl1_local';
        TUM_camera_ID = str2double(subdataset(1));
        switch TUM_camera_ID
            case 1
@@ -29,14 +29,19 @@ switch dataset_name
            otherwise
                error('TUM data set error')
        end
-       filepath = [driverpath '/sequences/test/image_'];
-       posepath = [driverpath '/test_quaternion.txt'];
-       filepath_history = [driverpath '/sequences/train/image_'];
-       posepath_history = [driverpath '/train_quaternion.txt'];
+       filepath = [driverpath '/sequences/01/image_'];
+       posepath = [driverpath '/01.txt'];
+       filepath_history = [driverpath '/sequences/00/image_'];
+       posepath_history = [driverpath '/00.txt'];
+       
+       FILENAME_BASE = [driverpath '/ethl1_local_train__siamese_FXPAL_output'];
         
-        filename = '/home/link/Projects/image-based-indoor-localization/model/chess/cdf/chess_output.h5py';
-        pose_ID_groudtruth{1} = h5read(filename,'/posenet_x_label');
-        pose_ID_predict{1} = h5read(filename,'/posenet_x_predicted');
+        
+        for i = 1 : 2
+            filename = [FILENAME_BASE '_' int2str(i-1) '.h5py'];
+            pose_ID_groudtruth{i} = h5read(filename,'/posenet_x_label');
+            pose_ID_predict{i} = h5read(filename,'/posenet_x_predicted');
+        end
        
        fid = fopen(posepath);
        groundtruth.robotpose = zeros(1000,3);
@@ -85,13 +90,13 @@ switch dataset_name
 
     case '7scenes'
         %%
-        driverpath = '/home/link/Projects/image-based-indoor-localization/data/chess';
+        driverpath = '/home/link/Projects/image-based-indoor-localization/data/';
         disp(['Loading 7scenes data set ' subdataset]);
         load('7scenes/cameraParams_kinect_7scenes.mat');
-        filepath = [driverpath '/sequences/test/image_'];
-        posepath = [driverpath '/test_quaternion.txt'];
-        filepath_history = [driverpath '/sequences/train/image_'];
-        posepath_history = [driverpath '/train_quaternion.txt'];
+        filepath = [driverpath subdataset '\sequences\test\image_'];
+        posepath = [driverpath subdataset '\test.txt'];
+        filepath_history = [driverpath subdataset '\sequences\train\image_'];
+        posepath_history = [driverpath subdataset '\train.txt'];
         
         
         % 0 for train
@@ -102,24 +107,28 @@ switch dataset_name
         pose_ID_groudtruth{1} = h5read(filename,'/posenet_x_label');
         pose_ID_predict{1} = h5read(filename,'/posenet_x_predicted');
         
+        
+        
         fid = fopen(posepath);
-        groundtruth.robotpose = zeros(4000,3);
-        groundtruth.orientation = zeros(3*4000,3);
+        groundtruth.robotpose = zeros(1000,3);
+        groundtruth.orientation = zeros(3*1000,3);
         i = 1;
         while 1
-           tline = fgetl(fid);
-           if ~ischar(tline),   break,   end  % exit at end of file
-           ln = sscanf(tline,'%s',1); % line type
-           if(isempty(ln))
-               break;
-           end
-           
-           mtl_name = split(tline);
-           groundtruth.robotpose(i,:) = [str2double(mtl_name{2,1}) str2double(mtl_name{3,1}) str2double(mtl_name{4,1})];
-           tmp = [str2double(mtl_name{8,1}) str2double(mtl_name{5,1}) str2double(mtl_name{6,1}) str2double(mtl_name{7,1})  ];
-           groundtruth.orientation(3*i-2:3*i,:)=quat2rotm(tmp);
-           i = i + 1;
-           
+            tline = fgetl(fid);
+            if ~ischar(tline),   break,   end  % exit at end of file
+            ln = sscanf(tline,'%s',1); % line type
+            if(isempty(ln))
+                break;
+            end
+            
+            mtl_name = split(tline);
+            groundtruth.robotpose(i,:) = [str2double(mtl_name{2,1}) str2double(mtl_name{3,1}) str2double(mtl_name{4,1})];
+            orientation = [str2double(mtl_name{5,1}) str2double(mtl_name{6,1}) str2double(mtl_name{7,1});
+                str2double(mtl_name{8,1}) str2double(mtl_name{9,1}) str2double(mtl_name{10,1});
+                str2double(mtl_name{11,1}) str2double(mtl_name{12,1}) str2double(mtl_name{13,1});];
+            groundtruth.orientation(3*i-2:3*i,:) = orientation;
+            i = i + 1;
+            
         end
         fclose(fid);
         
@@ -128,23 +137,25 @@ switch dataset_name
         
         fid = fopen(posepath_history);
         % parse .obj file
-        history.robotpose = zeros(2000,3);
-        history.orientation = zeros(3*2000,3);
+        history.robotpose = zeros(1000,3);
+        history.orientation = zeros(3*1000,3);
         i = 1;
         while 1
-           tline = fgetl(fid);
-           if ~ischar(tline),   break,   end  % exit at end of file
-           ln = sscanf(tline,'%s',1); % line type
-           if(isempty(ln))
-               break;
-           end
+            tline = fgetl(fid);
+            if ~ischar(tline),   break,   end  % exit at end of file
+            ln = sscanf(tline,'%s',1); % line type
+            if(isempty(ln))
+                break;
+            end
+            
+            mtl_name = split(tline);
+            history.robotpose(i,:) = [str2double(mtl_name{2,1}) str2double(mtl_name{3,1}) str2double(mtl_name{4,1})];
+            orientation = [str2double(mtl_name{5,1}) str2double(mtl_name{6,1}) str2double(mtl_name{7,1});
+                str2double(mtl_name{8,1}) str2double(mtl_name{9,1}) str2double(mtl_name{10,1});
+                str2double(mtl_name{11,1}) str2double(mtl_name{12,1}) str2double(mtl_name{13,1});];
+            history.orientation(3*i-2:3*i,:) = orientation;
            
-           mtl_name = split(tline);
-           history.robotpose(i,:) = [str2double(mtl_name{2,1}) str2double(mtl_name{3,1}) str2double(mtl_name{4,1})];
-           tmp = [str2double(mtl_name{8,1}) str2double(mtl_name{5,1}) str2double(mtl_name{6,1}) str2double(mtl_name{7,1}) ];
-           history.orientation(3*i-2:3*i,:)=quat2rotm(tmp);
-           
-           i = i + 1;
+            i = i + 1;
         end
         fclose(fid);
 

@@ -1,7 +1,7 @@
 %===========================================%
 close all;
 clc;clear all;
-timer = tic();
+
 %   =========================  Data selector  =========================     %
 %   dataset    |      Subdataset
 %   nvidia:    |warehouse  warehouse_dark
@@ -14,7 +14,6 @@ bool_recordvideo = false;
 % =====#debug=====#debug=====#debug=====#debug=====#debug==========  %
 
 %% Read pose (NVIDIA-ISSAC sim)
-run('vlfeat-0.9.21\toolbox\vl_setup.m')
 addpath(genpath('utility'));
 addpath(genpath('math'));
 addpath(genpath('data_loader'));
@@ -71,7 +70,7 @@ result_orient_var   = [];
 result_reprojecterror = [];
 % global_rotation = eye(3,3);global_translation = [0 0 0];
 num_gap = 1;
-for i = 1 :num_gap: 2000%size(pose_ID_predict{end},2)
+for i = 1 :num_gap: 50%size(pose_ID_predict{end},2)
     
     locID = i;
     disp(['Step: ', num2str(locID)]);
@@ -114,18 +113,11 @@ for i = 1 :num_gap: 2000%size(pose_ID_predict{end},2)
     realrobotpose = groundtruth.robotpose(locID,:);
     
     error_angle(ind) = angleDifference(Orient_est,realorientation);
-    if (ind > 1)
-       if (error_angle(ind) - error_angle(ind - 1) > error_angle(ind - 1)) 
-           error_angle(ind) = error_angle(ind - 1);
-       end
-    end
     error_angle_init(ind) = angleDifference(observe_init.orientation,realorientation);
     error_dis(ind) = disDifference(robotpose_est,realrobotpose);
-    if (ind > 1)
-       if (error_dis(ind) - error_dis(ind - 1) > 2 * error_dis(ind - 1)) 
-           error_dis(ind) = error_dis(ind - 1);
-       end
-    end
+    error_dis_init(ind) = disDifference(observe_init.robotpose,realrobotpose);
+    disp([num2str(i),' Angle Position difference: ', num2str(error_angle(ind)),' '...
+        num2str(error_dis(ind)) ]);
     
     error_dis_init(ind) = disDifference(observe_init.robotpose,realrobotpose);
     disp([num2str(i),' Angle Position difference: ', num2str(error_angle(ind)),' '...
@@ -165,9 +157,6 @@ for i = 1 :num_gap: 2000%size(pose_ID_predict{end},2)
 %     X_fig(ind) = i;
     ind = ind + 1;
 end
-
-timer_end = toc(timer);
-
 if(num_gap==1)
     save('GeometricLocator.mat','result_orient','result_orient_var','result_position','result_position_var','result_reprojecterror');
     disp('The result of Geometric Locator is saved');
@@ -201,11 +190,11 @@ hold on;
 
 error_dis(error_dis>10)=0;
 disp('Overall accuracy:   Error_dis    Error_dis_init       Error_angle     Error_angle_init    ');
-disp([mean(error_dis) mean(error_dis_init) mean(error_angle) mean(error_angle_init)]);
+disp([median(error_dis) median(error_dis_init) median(error_angle) median(error_angle_init)]);
 ind = (error_dis == error_dis_init);
 error_dis(ind)=0;error_dis_init(ind)=0;error_angle(ind)=0;error_angle_init(ind)=0;
 disp('Improved accuracy	:   Error_dis    Error_dis_init       Error_angle     Error_angle_init    ');
-disp([mean(error_dis) mean(error_dis_init) mean(error_angle) mean(error_angle_init)]);
+disp([median(error_dis) median(error_dis_init) median(error_angle) median(error_angle_init)]);
 
 
 % trisurf ( obj.f.v, obj.v(:,1), obj.v(:,2), obj.v(:,3));
