@@ -16,11 +16,19 @@ class FeatureLoader():
             neighbor_ids = [int(l)-1 for l in lines]
         with open('{}viewIds_matches/{}'.format(self.feature_path, filename)) as f:
             lines = f.readlines()
-            match_frame_ids = [[neighbor_ids[int(x)-2] for x in l.split(',')[1:]] for l in lines]
+            match_frame_ids = []
+            for l in lines:
+                tmp = []
+                for x in l.split(',')[1:]:
+                    if int(x) == -1:
+                        break
+                    tmp.append(neighbor_ids[int(x)-2])
+                match_frame_ids.append(tmp)
         with open('{}points_matches/{}'.format(self.feature_path, filename)) as f:
             lines = f.readlines()
             lines = [[float(x) for x in l.split(',')] for l in lines]
-            uv_points = [np.array(l).reshape(3,2) for l in lines]
+            uv_points = [np.array(l) for l in lines]
+            uv_points = [p[p!=-1].reshape(-1,2) for p in uv_points]
         with open('{}feature_matches_3d/{}'.format(self.feature_path, filename)) as f:
             lines = f.readlines()
             xyz_points = [[float(x) for x in l.split(',')] for l in lines]
