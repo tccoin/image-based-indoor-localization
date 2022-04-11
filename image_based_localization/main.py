@@ -1,5 +1,8 @@
 import argparse
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 import tensorflow as tf
 from siamese_network import posenet
 from siamese_network.helper import readDataFromFile, parse_function, angleDifference, distDifference
@@ -8,7 +11,6 @@ from search import search
 from utils.feature_loader import FeatureLoader
 import gtsam
 import numpy as np
-import matplotlib.pyplot as plt
 
 class ImageBasedLocalization:
     def __init__(self, args):
@@ -72,13 +74,13 @@ class ImageBasedLocalization:
         dataset, poses = self.load_tfrecord_dataset(self.test_data_file)
         descriptors = self.model.predict(dataset)
         feature_loader = FeatureLoader(self.feature_path)
-        trajectory =  []
+        estimated_trajectory =  []
         num_gap = 1
-        total = 2000
+        total = 50
         N = total//num_gap
         dist_diff = np.zeros(N)
         angle_diff = np.zeros(N)
-        plt.switch_backend('Qt5Agg')
+        trajectory = []
         for i in range(0,total,num_gap):
             descriptor = descriptors[i]
             map_frame_id = self.search_image(descriptor)
@@ -89,26 +91,20 @@ class ImageBasedLocalization:
                 continue
             pose_initial_guess = self.map_poses[map_frame_id]
             neighbor_poses = [self.map_poses[x] for x in neighbor_ids]
-            # estimated_pose = self.visam2.update(
-            #     neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses
-            # )
-            estimated_pose = self.visam2.update_smart_factor(
-                neighbor_ids, match_frame_ids, uv_points, pose_initial_guess, neighbor_poses
+            result_poses = self.visam2.update(
+                neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses, poses[i]
             )
-            dist_diff[i//num_gap], angle_diff[i//num_gap] = self.calc_error(poses[i], estimated_pose)
+            # estimated_pose = self.visam2.update_smart_factor(
+            #     neighbor_ids, match_frame_ids, uv_points, pose_initial_guess, neighbor_poses
+            # )
+            dist_diff[i//num_gap], angle_diff[i//num_gap] = self.calc_error(poses[i], result_poses[1])
             print(i, 'dist diff:', dist_diff[i//num_gap],'angle diff:', angle_diff[i//num_gap])
             # self.visam2.plot(gtsam.Pose3(
             #     gtsam.Rot3.Quaternion(poses[i][6],*poses[i][3:6]),
             #     gtsam.Point3(poses[i][0:3])
             # ))
-            trajectory.append(estimated_pose)
+            trajectory.append(result_poses)
         print(np.median(dist_diff), np.median(angle_diff))
-        plt.plot(np.arange(total), dist_diff)
-        plt.show()
-        plt.pause(5)
-        plt.plot(np.arange(total), angle_diff)
-        plt.show()
-        plt.pause(5)
         return trajectory
 
     def calc_error(self, gt_pose, estimated_pose):

@@ -1,10 +1,8 @@
-import enum
 import gtsam
 import gtsam.utils.plot as gtsam_plot
-import matplotlib.pyplot as plt
 import numpy as np
 from gtsam.symbol_shorthand import L, X
-
+import matplotlib.pyplot as plt
 
 def visual_ISAM2_plot(result, gt):
     """
@@ -31,11 +29,11 @@ def visual_ISAM2_plot(result, gt):
     while result.exists(X(i)):
         pose_i = result.atPose3(X(i))
         if i==7:
-            gtsam_plot.plot_pose3(fignum, pose_i, 6)
+            gtsam_plot.plot_pose3(fignum, pose_i, 0.6)
         else:
-            gtsam_plot.plot_pose3(fignum, pose_i, 3)
+            gtsam_plot.plot_pose3(fignum, pose_i, 0.3)
         i += 1
-    gtsam_plot.plot_pose3(fignum, gt, 10)
+    gtsam_plot.plot_pose3(fignum, gt, 1)
 
     # draw
     axes.set_xlim3d(-6, 6)
@@ -45,20 +43,31 @@ def visual_ISAM2_plot(result, gt):
 
 class VisualISAM2():
     def __init__(self):
-        self.K = gtsam.Cal3_S2(552, 555, 0.0, 306, 234) # camera matrix
-        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 10.0) # observation noise model
-        self.point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
+        self.K = gtsam.Cal3_S2(585, 585, 0.0, 320, 240) # camera matrix
+        self.measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1) # observation noise model
+        self.point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.01)
         self.pose_noise = gtsam.noiseModel.Diagonal.Sigmas(
-            np.array([0.1, 0.1, 0.1, 0.3, 0.3, 0.3]
-        ))
+            np.ones(6)*0.001
+            # np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        )
+        self.rot_body_2_camera = gtsam.Rot3(np.array([[0,-1,0],[0,0,-1],[1,0,0]]))
 
-    def update(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses):
+    def update(self, neighbor_ids, match_frame_ids, uv_points, xyz_points, pose_initial_guess, neighbor_poses, gt_pose):
 
-        plt.ion()
 
         # graph and values
         graph = gtsam.NonlinearFactorGraph()
         initial_estimate = gtsam.Values()
+
+        # plot
+        plt.ion()
+        fignum = 0
+        fig = plt.figure(fignum)
+        axes = fig.gca(projection='3d')
+        plt.cla()
+        axes.set_xlim3d(-1, 1)
+        axes.set_ylim3d(-1, 1)
+        axes.set_zlim3d(-1, 1)
 
         # update data to include test frame
         test_frame_id = len(neighbor_ids)
@@ -76,19 +85,21 @@ class VisualISAM2():
             graph.push_back(gtsam.PriorFactorPoint3(
                 L(landmark_id), gtsam.Point3(*landmark_position), self.point_noise
             ))
-            for i in range(len(match_frame_id)):
+            for measurement_index, frame_id in enumerate(match_frame_id):
                 graph.push_back(gtsam.GenericProjectionFactorCal3_S2(
-                    measurements[i], self.measurement_noise, X(i),
+                    measurements[measurement_index], self.measurement_noise, X(frame_id),
                     L(landmark_id), self.K
                 ))
 
+        # gtsam_plot.plot_3d_points(fignum, initial_estimate, 'rx')
+    
         # set neighbor initial poses
-        for i, neighbor_pose in enumerate(neighbor_poses):
-            pose = neighbor_poses[i]
+        for i, pose in enumerate(neighbor_poses):
             pose = gtsam.Pose3(
-                gtsam.Rot3.Quaternion(pose[6],*pose[3:6]),
+                gtsam.Rot3.Quaternion(pose[6],*pose[3:6]).inverse(),
                 gtsam.Point3(pose[0:3])
             )
+            # gtsam_plot.plot_pose3(fignum, pose, 0.1)
             initial_estimate.insert(X(i), pose)
             if i != test_frame_id:
                 graph.push_back(gtsam.PriorFactorPose3(
@@ -102,14 +113,37 @@ class VisualISAM2():
         # isam.update(graph, initial_estimate)
         # self.current_estimate = isam.calculateEstimate()
 
+        # result
+        gt_pose = gtsam.Pose3(
+            gtsam.Rot3.Quaternion(gt_pose[6],*gt_pose[3:6]),
+            gtsam.Point3(gt_pose[0:3])
+        )
+        initial_pose = gtsam.Pose3(
+            gtsam.Rot3.Quaternion(pose_initial_guess[6],*pose_initial_guess[3:6]).inverse(),
+            gtsam.Point3(pose_initial_guess[0:3])
+        )
+
         # batch optimize
         optimizer = gtsam.GaussNewtonOptimizer(graph, initial_estimate)
         try:
             self.current_estimate = optimizer.optimize()
         except:
-            return gtsam.Pose3()
+            return initial_pose, gtsam.Pose3(), gt_pose
 
-        return self.current_estimate.atPose3(X(test_frame_id))
+        # plot
+
+        estimated_pose = self.current_estimate.atPose3(X(test_frame_id))
+        estimated_pose = gtsam.Pose3(
+            estimated_pose.rotation().inverse(),
+            estimated_pose.translation()
+        )
+
+        gtsam_plot.plot_pose3(fignum, initial_pose, 0.5)
+        gtsam_plot.plot_pose3(fignum, estimated_pose, 1)
+        gtsam_plot.plot_pose3(fignum, gt_pose, 2)
+        plt.close()
+
+        return initial_pose, estimated_pose, gt_pose
 
     def update_smart_factor(self, neighbor_ids, match_frame_ids, uv_points, pose_initial_guess, neighbor_poses):
 
@@ -130,16 +164,16 @@ class VisualISAM2():
         
         for landmark_id, match_frame_id in enumerate(match_frame_ids):
             measurements = uv_points[landmark_id]
-            for i in range(len(match_frame_id)):
-                smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
-                smart_factor.add(measurements[i], X(i))
-                graph.push_back(smart_factor)
+            smart_factor = gtsam.SmartProjectionPose3Factor(self.measurement_noise, self.K)
+            for measurement_index, frame_id in enumerate(match_frame_id):
+                smart_factor.add(measurements[measurement_index], X(frame_id))
+            graph.push_back(smart_factor)
 
         # set neighbor initial poses
-        for i, neighbor_pose in enumerate(neighbor_poses):
-            pose = neighbor_poses[i]
+        for i, pose in enumerate(neighbor_poses):
             pose = gtsam.Pose3(
-                gtsam.Rot3.Quaternion(pose[6],*pose[3:6]),
+                gtsam.Rot3.Quaternion(pose[6],*pose[3:6])
+                    .compose(self.rot_body_2_camera),
                 gtsam.Point3(pose[0:3])
             )
             initial_estimate.insert(X(i), pose)
@@ -156,7 +190,7 @@ class VisualISAM2():
         # self.current_estimate = isam.calculateEstimate()
 
         # batch optimize
-        optimizer = gtsam.DoglegOptimizer(graph, initial_estimate)
+        optimizer = gtsam.GaussNewtonOptimizer(graph, initial_estimate)
         self.current_estimate = optimizer.optimize()
 
         return self.current_estimate.atPose3(X(test_frame_id))
