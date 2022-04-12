@@ -56,7 +56,7 @@ def visual_ISAM2_plot(result, gt_poses):
     axes.set_xlim3d(-40, 40)
     axes.set_ylim3d(-40, 40)
     axes.set_zlim3d(-40, 40)
-    # plt.pause(0.5)
+    plt.pause(0.3)
 
 
 def visual_ISAM2_example():
@@ -70,6 +70,9 @@ def visual_ISAM2_example():
 
     # Create the set of ground-truth landmarks
     points = SFMdata.createPoints()
+    points += [p+3 for p in points]
+    points += [p+3 for p in points]
+    points = [(i, point) for (i, point) in enumerate(points)]
 
     # Create the set of ground-truth poses
     poses = SFMdata.createPoses(K)
@@ -97,33 +100,41 @@ def visual_ISAM2_example():
 
     # debug
     optimize_time = 0
+    noise = 1
 
     #  Loop over the different poses, adding the observations to iSAM incrementally
     for i, pose in enumerate(poses):
+
+        if i==15:
+            points=points[0:5]
+            noise = 5
+
         # print(pose)
         # Add factors for each landmark observation
-        for j, point in enumerate(points):
+        for j, point in points:
             camera = gtsam.PinholeCameraCal3_S2(pose, K)
-            measurement = camera.project(point) # + np.random.normal(0, 2)
+            measurement = camera.project(point) + np.random.normal(0, noise)
             if not j in smartFactors:
                 smartFactors[j] = gtsam.SmartProjectionPose3Factor(measurement_noise, K)
-            # graph.add(smartFactors[j])
+            graph.add(smartFactors[j])
             smartFactors[j].add(measurement, X(i))
             
-            if smartFactors[j].size() >= min_measurements:
-                graph.add(smartFactors[j])
+            # if smartFactors[j].size() >= min_measurements:
+            #     graph.add(smartFactors[j])
                 
 
         # Add an initial guess for the current pose
         # Intentionally initialize the variables off from the ground truth
         # initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
         #     gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(1, -1, 1))))
-        if i<=3:
-            # initial_estimate.insert(X(i), pose)
-            initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
-                gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(1, -1, 1))))
-        else:
-            initial_estimate.insert(X(i), current_estimate.atPose3(X(i-1)))
+        # if i<=3:
+        #     # initial_estimate.insert(X(i), pose)
+        #     initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
+        #         gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(0.1, -0.1, 0.1))))
+        # else:
+        #     initial_estimate.insert(X(i), current_estimate.atPose3(X(i-1)))
+        initial_estimate.insert(X(i), pose.compose(gtsam.Pose3(
+            gtsam.Rot3.Rodrigues(-0.1, 0.2, 0.15), gtsam.Point3(0.1, -0.1, 0.1))))
 
         # If this is the first iteration, add a prior on the first pose to set the
         # coordinate frame and a prior on the first landmark to set the scale.
@@ -132,7 +143,7 @@ def visual_ISAM2_example():
         if i <= 1:
             # Add a prior on pose x0
             pose_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array(
-                [0.5, 0.5, 0.5, 1, 1, 1]))  # 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+                [0.3, 0.3, 0.3, 0.1, 0.1, 0.1]))  # 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
             graph.push_back(gtsam.PriorFactorPose3(X(i), poses[i], pose_noise))
 
         if i >= 2:
@@ -155,7 +166,7 @@ def visual_ISAM2_example():
             # for j in range(i + 1):
             #     print(X(j), ":", current_estimate.atPose3(X(j)))
 
-            # visual_ISAM2_plot(current_estimate, poses)
+            visual_ISAM2_plot(current_estimate, poses)
 
             # Clear the factor graph and values for the next iteration
             graph.resize(0)

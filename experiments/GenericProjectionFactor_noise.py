@@ -20,6 +20,7 @@ import numpy as np
 from gtsam.symbol_shorthand import L, X
 from gtsam.examples import SFMdata
 import time
+import random
 
 def visual_ISAM2_plot(result, gt_poses):
     """
@@ -54,7 +55,7 @@ def visual_ISAM2_plot(result, gt_poses):
     axes.set_xlim3d(-40, 40)
     axes.set_ylim3d(-40, 40)
     axes.set_zlim3d(-40, 40)
-    plt.pause(1)
+    plt.pause(0.2)
 
 
 def visual_ISAM2_example():
@@ -69,6 +70,9 @@ def visual_ISAM2_example():
 
     # Create the set of ground-truth landmarks
     points = SFMdata.createPoints()
+    points += [p+3 for p in points]
+    points += [p+3 for p in points]
+    points = [(i, point) for (i, point) in enumerate(points)]
 
     # Create the set of ground-truth poses
     poses = SFMdata.createPoses(K)
@@ -91,14 +95,19 @@ def visual_ISAM2_example():
 
     # debug
     optimize_time = 0
+    noise = 1
 
     #  Loop over the different poses, adding the observations to iSAM incrementally
     for i, pose in enumerate(poses):
 
+        if i==5:
+            points=points[0:5]
+            noise = 3
+
         # Add factors for each landmark observation
-        for j, point in enumerate(points):
+        for j, point in points:
             camera = gtsam.PinholeCameraCal3_S2(pose, K)
-            measurement = camera.project(point)
+            measurement = camera.project(point) + np.random.normal(0, noise)
             graph.push_back(gtsam.GenericProjectionFactorCal3_S2(
                 measurement, measurement_noise, X(i), L(j), K))
 
@@ -124,11 +133,11 @@ def visual_ISAM2_example():
             # Add a prior on landmark l0
             point_noise = gtsam.noiseModel.Isotropic.Sigma(3, 0.1)
             graph.push_back(gtsam.PriorFactorPoint3(
-                L(0), points[0], point_noise))  # add directly to graph
+                L(0), points[0][1], point_noise))  # add directly to graph
 
             # Add initial guesses to all observed landmarks
             # Intentionally initialize the variables off from the ground truth
-            for j, point in enumerate(points):
+            for j, point in points:
                 initial_estimate.insert(L(j), gtsam.Point3(
                     point[0]-0.25, point[1]+0.20, point[2]+0.15))
         else:
